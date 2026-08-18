@@ -311,10 +311,10 @@ function createGitlabProjectIssue(input: GitlabActionInput, context: GitlabActio
 function updateGitlabProjectIssue(input: GitlabActionInput, context: GitlabActionContext): Promise<unknown> {
   const body = compactObject({
     title: asOptionalString(input.title),
-    description: asOptionalString(input.description),
-    labels: asOptionalString(input.labels),
-    add_labels: asOptionalString(input.addLabels),
-    remove_labels: asOptionalString(input.removeLabels),
+    description: asClearableString(input.description),
+    labels: asClearableString(input.labels),
+    add_labels: asClearableString(input.addLabels),
+    remove_labels: asClearableString(input.removeLabels),
     assignee_ids: Array.isArray(input.assigneeIds) ? input.assigneeIds : undefined,
     confidential: optionalBoolean(input.confidential),
     discussion_locked: optionalBoolean(input.discussionLocked),
@@ -349,7 +349,7 @@ function updateGitlabProject(input: GitlabActionInput, context: GitlabActionCont
   const body = compactObject({
     name: asOptionalString(input.name),
     path: asOptionalString(input.path),
-    description: asOptionalString(input.description),
+    description: asClearableString(input.description),
     visibility: asOptionalString(input.visibility),
     default_branch: asOptionalString(input.defaultBranch),
     archived: optionalBoolean(input.archived),
@@ -407,16 +407,15 @@ function createGitlabMergeRequest(input: GitlabActionInput, context: GitlabActio
 function updateGitlabMergeRequest(input: GitlabActionInput, context: GitlabActionContext): Promise<unknown> {
   const body = compactObject({
     title: asOptionalString(input.title),
-    description: asOptionalString(input.description),
+    description: asClearableString(input.description),
     target_branch: asOptionalString(input.targetBranch),
     state_event: asOptionalString(input.stateEvent),
-    labels: asOptionalString(input.labels),
+    labels: asClearableString(input.labels),
     assignee_ids: Array.isArray(input.assigneeIds) ? input.assigneeIds : undefined,
     reviewer_ids: Array.isArray(input.reviewerIds) ? input.reviewerIds : undefined,
     milestone_id: optionalIntegerLike(input.milestoneId, "milestoneId"),
     remove_source_branch: optionalBoolean(input.removeSourceBranch),
     squash: optionalBoolean(input.squash),
-    draft: optionalBoolean(input.draft),
     allow_collaboration: optionalBoolean(input.allowCollaboration),
   });
   ensureUpdateFields(body, "update_merge_request");
@@ -456,6 +455,10 @@ function ensureUpdateFields(body: Record<string, unknown>, actionName: string): 
   if (Object.keys(body).length === 0) {
     throw new ProviderRequestError(400, `${actionName} requires at least one field to update`);
   }
+}
+
+function asClearableString(value: unknown): string | undefined {
+  return typeof value === "string" ? value.trim() : undefined;
 }
 
 async function gitlabRequestJson(
@@ -608,6 +611,16 @@ function readProjectId(input: GitlabActionInput): string {
   const projectId = trimOptionalString(input.projectId);
   if (!projectId) {
     throw new ProviderRequestError(400, "projectId is required");
+  }
+  if (
+    projectId === "." ||
+    projectId === ".." ||
+    projectId.includes("/") ||
+    projectId.includes("\\") ||
+    projectId.includes("?") ||
+    projectId.includes("#")
+  ) {
+    throw new ProviderRequestError(400, "projectId must be a numeric ID or URL-encoded project path");
   }
   return projectId;
 }

@@ -91,6 +91,8 @@ describe("GitLab actions", () => {
         projectId: "group%2Fdemo",
         issueIid: 7,
         title: "Updated title",
+        description: "",
+        labels: "",
         stateEvent: "close",
         assigneeIds: [9],
       },
@@ -99,6 +101,8 @@ describe("GitLab actions", () => {
         expect(init?.method).toBe("PUT");
         expect(JSON.parse(String(init?.body))).toEqual({
           title: "Updated title",
+          description: "",
+          labels: "",
           state_event: "close",
           assignee_ids: [9],
         });
@@ -135,7 +139,7 @@ describe("GitLab actions", () => {
     });
   });
 
-  it("merges a merge request and normalizes a no-content deletion", async () => {
+  it("merges a merge request", async () => {
     let mergeBody: unknown;
     const result = await gitlabActionHandlers.merge_merge_request(
       {
@@ -154,7 +158,9 @@ describe("GitLab actions", () => {
     );
     expect(mergeBody).toEqual({ auto_merge: true, sha: "abc123", squash: true });
     expect(result).toEqual({ iid: 8, state: "merged" });
+  });
 
+  it("normalizes a no-content deletion", async () => {
     const deleted = await gitlabActionHandlers.delete_project_issue(
       { projectId: "1", issueIid: 9 },
       actionContext(async (url, init) => {
@@ -164,5 +170,26 @@ describe("GitLab actions", () => {
       }),
     );
     expect(deleted).toEqual({ deleted: true });
+  });
+
+  it("rejects invalid update payloads and identifiers before making a request", async () => {
+    const noRequest = actionContext(async () => {
+      throw new Error("no request expected");
+    });
+
+    await expect(
+      Promise.resolve().then(() =>
+        gitlabActionHandlers.update_project_issue({ projectId: "1", issueIid: 9 }, noRequest),
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      Promise.resolve().then(() => gitlabActionHandlers.delete_project_issue({ projectId: "1" }, noRequest)),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      Promise.resolve().then(() => gitlabActionHandlers.merge_merge_request({ projectId: "1" }, noRequest)),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      Promise.resolve().then(() => gitlabActionHandlers.get_project({ projectId: "1/../../groups/2" }, noRequest)),
+    ).rejects.toMatchObject({ status: 400 });
   });
 });

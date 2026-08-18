@@ -396,7 +396,6 @@ const actions: GitlabActionSource[] = [
         milestoneId: s.integer({ description: "The milestone ID." }),
         removeSourceBranch: s.boolean({ description: "Whether to remove the source branch after merge." }),
         squash: s.boolean({ description: "Whether to squash commits when merging." }),
-        draft: s.boolean({ description: "Whether the merge request is a draft." }),
         allowCollaboration: s.boolean({ description: "Allow commits from eligible project members." }),
       },
       ["projectId", "mergeRequestIid"],
@@ -411,7 +410,7 @@ const actions: GitlabActionSource[] = [
       {
         projectId,
         mergeRequestIid: s.positiveInteger("The internal merge request ID within the project."),
-        autoMerge: s.boolean({ description: "Merge automatically when checks pass." }),
+        autoMerge: s.boolean({ description: "Merge automatically when checks pass. Requires GitLab 17.11 or later." }),
         sha: s.string({ minLength: 1, description: "Require this source branch commit SHA before merging." }),
         shouldRemoveSourceBranch: s.boolean({ description: "Remove the source branch after merging." }),
         squash: s.boolean({ description: "Squash commits when merging." }),
